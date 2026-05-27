@@ -1,5 +1,5 @@
 
-# elock-api
+# TRANCA-API
 
 API backend do projeto Elock — gerenciamento de fechaduras conectadas.
 
