@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+* {
+  font-family: 'Inter', 'sans-serif';
+}
+
+:root {
+  --primary: #0f62fe;
+  --primary-dark: #084cdf;
+  --primary-light: #3b82f6;
+  --primary-lighter: #93c5fd;
+  --primary-darker: #0b2559;
+
+  --secondary: #ffffff;
+
+  --neutral: #eef4ff;
+  --neutral-dark: #c9d8ef;
+  --neutral-light: #f8fbff;
+  --text-color: #0f172a;
+  --muted-text: #64748b;
+  --border-color: #d7e3f5;
+
+  --accent: #dbeafe;
+  --accent-dark: #60a5fa;
+  --accent-light: #eff6ff;
+  --accent-hover: #bfdbfe;
+
+  --success: #4caf50;
+  --warning: #ff9800;
+  --error: #f44336;
+  --info: #2196f3;
+
+  --background-default: #f8fbff;
+  --background-alt: #eef6ff;
+  --background-dark: #121212;
+
+}
+
+body {
+  margin: 0;
+  color: var(--text-color);
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 32rem),
+    linear-gradient(180deg, #f8fbff 0%, #edf5ff 100%);
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-shell {
+  background:
+    linear-gradient(135deg, rgba(15, 98, 254, 0.08), transparent 34%),
+    var(--background-default);
+}
+
+.surface-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 18px 45px rgba(15, 35, 89, 0.08);
+  backdrop-filter: blur(12px);
+}
