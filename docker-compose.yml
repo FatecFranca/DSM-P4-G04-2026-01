@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    build: ./backend
     ports:
       - "${APP_PORT}:${APP_PORT}"
     env_file:
@@ -9,7 +9,7 @@ services:
       NODE_ENV: ${NODE_ENV}
       DATABASE_URL: "postgres://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}"
     volumes:
-      - ./migrations:/app/migrations
+      - ./backend/migrations:/app/migrations
     depends_on:
       - db
 

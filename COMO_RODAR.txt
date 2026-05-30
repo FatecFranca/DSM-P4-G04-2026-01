@@ -1,0 +1,294 @@
+==========================================================================
+  PROJETO TrancAi - SISTEMA DE FECHADURAS INTELIGENTES IoT
+  GUIA COMPLETO DE COMO RODAR (do zero)
+==========================================================================
+
+Este guia ensina a rodar o projeto inteiro:
+  - Backend  (API NestJS + banco PostgreSQL, no Docker)
+  - Frontend (site React/Vite)
+  - ESP32    (firmware da fechadura: WiFi + RFID + servo)
+
+Leia com calma. Siga os PASSOS na ordem. Duvidas, fala no grupo.
+
+==========================================================================
+  0. ESTRUTURA DO REPOSITORIO
+==========================================================================
+
+  DSM-P4-G04-2026-01/
+  ├── backend/              -> API NestJS + Postgres (Docker)
+  ├── frontend/             -> Site React/Vite
+  ├── docker-compose.yml    -> sobe back + banco juntos
+  ├── .env.example          -> template das variaveis de ambiente
+  └── README.md
+
+  O firmware do ESP32 fica num arquivo .ino no PC de quem grava a placa
+  (nao precisa estar no repositorio).
+
+==========================================================================
+  1. O QUE PRECISA ESTAR INSTALADO NO PC
+==========================================================================
+
+  [ ] Docker Desktop      -> roda o backend e o banco
+  [ ] Node.js (v18 ou +)  -> roda o frontend
+  [ ] Git                 -> clonar o repositorio
+  [ ] Arduino IDE 2.x     -> programar o ESP32 (so quem vai mexer no IoT)
+  [ ] Driver CP210x       -> faz o PC enxergar o ESP32 na USB
+
+Links:
+  Docker:        https://www.docker.com/products/docker-desktop/
+  Node.js:       https://nodejs.org  (versao LTS)
+  Arduino IDE:   https://www.arduino.cc/en/software
+  Driver CP210x: https://www.silabs.com/documents/public/software/CP210x_Universal_Windows_Driver.zip
+
+==========================================================================
+  2. CLONAR O REPOSITORIO
+==========================================================================
+
+  Abra o PowerShell e:
+
+     git clone https://github.com/FatecFranca/DSM-P4-G04-2026-01.git
+     cd DSM-P4-G04-2026-01
+
+==========================================================================
+  3. CONFIGURAR AS VARIAVEIS DE AMBIENTE
+==========================================================================
+
+  Na raiz do projeto, copie o exemplo para um .env de verdade:
+
+     copy .env.example .env
+
+  O conteudo padrao ja funciona pra desenvolvimento local. Se quiser
+  mudar senhas/banco, edite o .env.
+
+  No frontend, faca o mesmo:
+
+     copy frontend\.env.example frontend\.env
+
+==========================================================================
+  4. SUBIR O BACKEND (API + BANCO)
+==========================================================================
+
+4.1) Abra o Docker Desktop (menu Iniciar). Espere a baleia ficar verde.
+
+4.2) No PowerShell, dentro da pasta do projeto:
+
+     docker compose up -d --build
+
+     (primeira vez demora alguns minutos baixando/buildando)
+
+4.3) Aguarde alguns segundos e rode as migrations (cria as tabelas):
+
+     docker compose exec app npm run migrate
+
+4.4) Teste se a API responde. No navegador abra:
+     http://localhost:8000
+     Deve aparecer:  Hello World!
+
+     Swagger (documentacao da API):  http://localhost:8000/api
+
+COMANDOS UTEIS:
+     docker compose start          -> ligar dia a dia
+     docker compose stop           -> desligar sem perder dados
+     docker compose logs -f app    -> acompanhar logs em tempo real
+
+==========================================================================
+  5. SUBIR O FRONTEND (SITE)
+==========================================================================
+
+5.1) Abra OUTRO PowerShell (deixe o do backend rodando).
+
+5.2) Entre na pasta frontend:
+
+     cd DSM-P4-G04-2026-01\frontend
+
+5.3) Na PRIMEIRA vez, instale as dependencias:
+
+     npm install
+
+5.4) Suba o site:
+
+     npm run dev
+
+5.5) Abra no navegador:  http://localhost:3001
+
+IMPORTANTE: o site (porta 3001) precisa que o backend (porta 8000) esteja
+rodando. Suba o backend (passo 4) ANTES.
+
+==========================================================================
+  6. USUARIOS E DADOS DO SISTEMA
+==========================================================================
+
+Usuario ADMIN:
+     email: admin@elock.com
+     senha: 123456
+
+Usuario do ESP32 (dono da "Fechadura Demo IoT", id=2):
+     email: esp32@elock.com
+     senha: esp32-demo-2026
+
+Cartao RFID autorizado no firmware atual (UID):  56 B5 9B 21
+
+==========================================================================
+  7. ESP32 - FIRMWARE DA FECHADURA (so quem mexe com IoT)
+==========================================================================
+
+--------------------------------------------------------------------------
+  7.1) LIGACOES FISICAS
+--------------------------------------------------------------------------
+
+  LEITOR RFID RC522  ->  ESP32
+     SDA  (ou SS)  ->  D5
+     SCK           ->  D18
+     MOSI          ->  D23
+     MISO          ->  D19
+     IRQ           ->  (NAO usa, deixar solto)
+     GND           ->  GND
+     RST           ->  D22
+     3.3V          ->  3V3   (NUNCA no 5V/VIN - queima o modulo)
+
+  SERVO MOTOR MG90S  ->  ESP32
+     fio MARROM  (GND)    ->  GND
+     fio VERMELHO (VCC)   ->  VIN   (5V)
+     fio LARANJA (sinal)  ->  D13
+
+  ATENCAO: o vermelho do servo vai no VIN e o marrom no GND.
+  Se inverter, da curto e pode queimar.
+
+--------------------------------------------------------------------------
+  7.2) ABRIR O FIRMWARE NO ARDUINO IDE
+--------------------------------------------------------------------------
+
+  1. Abra o Arduino IDE.
+  2. File -> Open -> arquivo elock_esp32.ino (que esta no PC, fora do repo)
+  3. Tools -> Board -> ESP32 Dev Module
+  4. Tools -> Port -> COM3 (ou a porta que aparecer)
+
+  Bibliotecas necessarias (Sketch -> Include Library -> Manage Libraries):
+     - "MFRC522 by GithubCommunity"
+     - "ESP32Servo by Kevin Harrington"
+
+  Suporte ESP32 (uma vez por PC):
+     File -> Preferences -> Additional boards manager URLs:
+     https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+     Tools -> Board -> Boards Manager -> busque "esp32" ->
+     instale "esp32 by Espressif Systems"
+
+--------------------------------------------------------------------------
+  7.3) CONFIGURAR WIFI E IP DENTRO DO CODIGO
+--------------------------------------------------------------------------
+
+  No comeco do elock_esp32.ino, edite:
+
+  // WiFi (ESP32 SO funciona em 2.4GHz, NAO em 5GHz)
+  const char* WIFI_SSID     = "nome_da_rede";
+  const char* WIFI_PASSWORD = "senha_da_rede";
+
+  // IP do PC onde a API esta rodando
+  const char* API_BASE = "http://192.168.X.X:8000";
+
+  COMO DESCOBRIR O IP DO PC:
+     - No PowerShell:  ipconfig
+     - Procure "Endereco IPv4" do adaptador Wi-Fi
+
+  IMPORTANTE:
+     - ESP32 e PC tem que estar na MESMA rede WiFi
+     - Toda vez que mudar de rede, o IP do PC muda -> atualizar API_BASE
+     - 5GHz NAO funciona, use a versao 2.4GHz da rede
+
+--------------------------------------------------------------------------
+  7.4) UPLOAD E TESTE
+--------------------------------------------------------------------------
+
+  1. Salve o arquivo:  Ctrl + S
+  2. Botao UPLOAD (seta -> no canto superior esquerdo)
+  3. Se travar em "Connecting...", segure o botao BOOT do ESP32
+  4. Quando terminar, abra o Serial Monitor (Ctrl + Shift + M, 115200 baud)
+  5. Aperte EN para reiniciar e ver os logs desde o inicio
+
+  Tudo OK quando aparecer:
+     [WIFI] IP local: 192.168.X.X
+     Sistema pronto. Aguardando comandos...
+
+==========================================================================
+  8. TESTAR O SISTEMA COMPLETO
+==========================================================================
+
+PRE-REQUISITOS: backend rodando (passo 4), frontend rodando (passo 5),
+ESP32 ligado e conectado no WiFi (passo 7).
+
+TESTE 1 - Abrir pelo cartao RFID:
+  - Aproxime o cartao (UID 56 B5 9B 21) no leitor RC522.
+  - No Serial Monitor aparece: AUTORIZADO + HTTP 200
+  - O servo motor GIRA.
+
+TESTE 2 - Abrir pelo site (tempo real):
+  - Abra http://localhost:3001
+  - Entre com:  esp32@elock.com / esp32-demo-2026
+  - Clique em "Ver fechaduras" -> "Fechadura Demo IoT"
+  - Tela mostra "Conectado" (WebSocket).
+  - Clique "Alternar para ON/OFF" -> o servo gira.
+  - OU aproxime o cartao -> a tela do site muda SOZINHA em tempo real.
+
+TESTE 3 - Dashboard:
+  - Header -> Dashboard
+  - Clique "Popular dados demo" -> gera eventos fake nos ultimos 7 dias
+  - Veja os 5 graficos preencherem
+  - Clique "Baixar PDF" -> baixa um relatorio visual com capa azul
+
+==========================================================================
+  9. PROBLEMAS COMUNS (TROUBLESHOOTING)
+==========================================================================
+
+P: A API nao responde (http://localhost:8000 nao abre).
+R: Docker Desktop esta aberto e rodou "docker compose up -d"?
+
+P: Site abre mas nao loga / da erro de rede.
+R: O backend (porta 8000) precisa estar rodando antes do site.
+
+P: ESP32 nao aparece na porta COM.
+R: Instale o driver CP210x. Troque o cabo USB (precisa ter dados).
+
+P: Serial mostra "[WIFI] FALHOU".
+R: A rede e 2.4GHz? (5GHz NAO funciona)
+   Nome e senha do WiFi estao certos? (diferencia maiusc/minusc)
+
+P: Serial mostra "Versao do chip RC522: 0x0" ou "ERRO DE FIACAO".
+R: Algum fio do RFID esta solto ou no pino errado. Reencaixe todos
+   com firmeza. Cuidado com MOSI/MISO trocados.
+
+P: ESP conecta mas o cartao nao manda pra API (erro no PUT).
+R: O IP no API_BASE esta certo? (rode ipconfig e confira)
+   Firewall do Windows pode estar bloqueando a porta 8000.
+   Abra o PowerShell COMO ADMINISTRADOR e rode:
+   New-NetFirewallRule -DisplayName "TrancAi API 8000" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow -Profile Any
+
+P: Quero usar hotspot do celular.
+R: 1) Ligue o hotspot (em 2.4GHz).
+   2) Conecte o PC nesse hotspot.
+   3) Rode "ipconfig" e pegue o novo IP do PC.
+   4) Atualize WIFI_SSID, WIFI_PASSWORD e API_BASE no firmware.
+   5) Faca upload de novo no ESP32.
+
+==========================================================================
+  10. RESUMO RAPIDO (quando ja esta tudo instalado)
+==========================================================================
+
+  Terminal 1 (backend):
+     cd DSM-P4-G04-2026-01
+     docker compose start
+
+  Terminal 2 (frontend):
+     cd DSM-P4-G04-2026-01\frontend
+     npm run dev
+
+  Arduino IDE:
+     - abrir elock_esp32.ino
+     - conferir WiFi/IP
+     - Upload (->)
+     - Serial Monitor 115200
+
+  Pronto:  http://localhost:3001  +  http://localhost:8000
+
+==========================================================================
+  FIM - bom trabalho, galera!
+==========================================================================
