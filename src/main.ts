@@ -28,8 +28,8 @@ async function bootstrap() {
   });
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Elock API')
-    .setDescription('API para sistema de tranca IoT')
+    .setTitle('TrancAi API')
+    .setDescription('API para sistema de fechaduras inteligentes (IoT)')
     .setVersion('1.0')
     .addBearerAuth(
       {

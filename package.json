@@ -1,7 +1,7 @@
 {
-  "name": "elock-api",
+  "name": "trancaai-api",
   "version": "0.0.1",
-  "description": "",
+  "description": "API backend do projeto TrancAi - sistema de fechaduras inteligentes IoT",
   "author": "",
   "private": true,
   "license": "UNLICENSED",

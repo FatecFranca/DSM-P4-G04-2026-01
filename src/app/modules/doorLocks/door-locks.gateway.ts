@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -8,6 +8,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { DoorLockUserService } from '../doorLockUsers/door-locks-users.service';
+import { DoorLocksService } from './door-locks.service';
 
 @WebSocketGateway({
   cors: {
@@ -24,6 +25,8 @@ export class DoorLocksGateway implements OnGatewayConnection, OnGatewayDisconnec
   constructor(
     private jwtService: JwtService,
     private doorLockUserService: DoorLockUserService,
+    @Inject(forwardRef(() => DoorLocksService))
+    private doorLocksService: DoorLocksService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -64,6 +67,33 @@ export class DoorLocksGateway implements OnGatewayConnection, OnGatewayDisconnec
 
       client.on('leave-lock', ({ lockId }) => {
         client.leave(`lock:${lockId}`);
+      });
+
+      // alterna estado da fechadura: valida acesso, persiste no banco e faz broadcast
+      client.on('toggle-lock', async ({ lockId, status }) => {
+        try {
+          if (!lockId || !status) {
+            client.emit('error', { message: 'lockId e status são obrigatórios' });
+            return;
+          }
+
+          const access = await this.doorLockUserService.findByUserAndLock(userId, lockId);
+          if (!access) {
+            client.emit('error', { message: 'Acesso negado a essa fechadura' });
+            return;
+          }
+
+          const normalized = String(status).toLowerCase() === 'on' ? 'on' : 'off';
+          await this.doorLocksService.update(
+            String(lockId),
+            { status: normalized } as any,
+            { userId, source: 'APP' },
+          );
+          // emitDoorLockUpdated já é disparado dentro de service.update(), faz broadcast para lock:{id}
+        } catch (err) {
+          this.logger.error('Erro toggle-lock', err);
+          client.emit('error', { message: 'Falha ao atualizar fechadura' });
+        }
       });
     } catch (err) {
       this.logger.warn(`Falha ao validar token socket: ${err.message}`);
